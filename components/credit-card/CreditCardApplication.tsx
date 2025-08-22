@@ -107,7 +107,7 @@ export default function CreditCardApplication() {
     } else if (status === 'approved') {
       setCurrentStep('completed');
       // Automatically assess credit eligibility
-      assessCreditEligibility();
+      handleCreditAssessment();
     } else if (status === 'failed' || status === 'expired') {
       setCurrentStep('failed');
     }
@@ -160,7 +160,7 @@ export default function CreditCardApplication() {
     }
   }, [startPolling, resetPolling]);
 
-  const assessCreditEligibility = async () => {
+  const handleCreditAssessment = async () => {
     if (!userInfo) return;
 
     try {
