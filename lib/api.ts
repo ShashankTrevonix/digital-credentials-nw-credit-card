@@ -533,10 +533,11 @@ export async function checkVerificationStatus(
           console.log('👤 Extracted user info for UI:', extractedUserInfo);
         }
       } catch (credentialError) {
-        console.error('❌ Error fetching credential data for UI:', credentialError);
+        const error = credentialError instanceof Error ? credentialError : new Error('Unknown error occurred');
+        console.error('❌ Error fetching credential data for UI:', error);
         console.error('🔍 Error details:', {
-          message: credentialError.message,
-          stack: credentialError.stack,
+          message: error.message,
+          stack: error.stack,
           sessionId,
           environmentId,
           hasAccessToken: !!accessToken
