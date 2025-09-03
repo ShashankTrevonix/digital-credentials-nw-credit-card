@@ -83,12 +83,12 @@ export default function CreditCardApplication() {
   useEffect(() => {
     if (verificationData?.accessToken && verificationData?.environmentId && qrCodeData?.sessionId) {
       console.log('Verification data updated, ensuring polling is active...');
-      // Only start polling if it's not already active
-      if (!isPolling) {
+      // Only start polling if it's not already active and we're not in a terminal state
+      if (!isPolling && !['completed', 'failed'].includes(currentStep)) {
         startPolling();
       }
     }
-  }, [verificationData, qrCodeData, isPolling, startPolling]);
+  }, [verificationData, qrCodeData, currentStep, startPolling]);
 
   function handleVerificationStatusChange(
     status: string, 

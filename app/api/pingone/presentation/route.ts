@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     // Use exact same structure as working app
     const presentationRequest = {
       message: message || "Please present your Digital ID for credit card application",
-      protocol: 'NATIVE',
+      protocol: 'OPENID4VP',
       digitalWalletApplication: {
         id: '428b26a1-8833-43de-824b-f1ed336c6245'
       },

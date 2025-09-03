@@ -93,7 +93,7 @@ export async function createPresentationRequest(
   
   const presentationRequest: PresentationRequest = {
     message,
-    protocol: 'NATIVE',
+    protocol: 'OPENID4VP',
     digitalWalletApplication: {
       id: '428b26a1-8833-43de-824b-f1ed336c6245'
     },
@@ -496,52 +496,35 @@ export async function checkVerificationStatus(
         expiresAt: data.expiresAt
       });
 
-      // Make parallel call to get credential data
-      getCredentialData(accessToken, environmentId, sessionId)
-        .then((credentialResponse) => {
-          console.log('✅ Credential data API call successful');
-          console.log('📥 Credential data API response:', credentialResponse);
-          
-          // Check if we got VERIFICATION_SUCCESSFUL from the credential data
-          const verificationStatus = credentialResponse.status || 'Status not found in expected location';
-          console.log('🔍 Credential verification status:', verificationStatus);
-          
-          // Flatten the credential data
-          const flattenedCredentialData = flattenCredentialData(credentialResponse);
-          console.log('📊 Flattened credential data:', flattenedCredentialData);
-          
-          // Log the flattened data in the required format
-          console.log('🎯 Credential data in required format:');
-          if (Object.keys(flattenedCredentialData).length === 0) {
-            console.warn('⚠️ No credentials were flattened - check the response structure above');
-          } else {
-            Object.entries(flattenedCredentialData).forEach(([credentialName, data]) => {
-              console.log(`📋 ${credentialName}:`, {
-                id: data.id,
-                type: data.type,
-                verificationStatus: data.verificationStatus,
-                issuerName: data.issuerName,
-                issuerId: data.issuerId,
-                data: data.data
-              });
-            });
-          }
-        })
-        .catch((error) => {
-          console.error('❌ Error fetching credential data:', error);
-          console.error('🔍 Error details:', {
-            message: error.message,
-            stack: error.stack,
-            sessionId,
-            environmentId,
-            hasAccessToken: !!accessToken
-          });
-        });
-
-      // Also fetch credential data synchronously to return user info
+      // Fetch credential data synchronously to return user info
       try {
         const credentialResponse = await getCredentialData(accessToken, environmentId, sessionId);
+        console.log('✅ Credential data API call successful');
+        console.log('📥 Credential data API response:', credentialResponse);
+        
+        // Check if we got VERIFICATION_SUCCESSFUL from the credential data
+        const verificationStatus = credentialResponse.status || 'Status not found in expected location';
+        console.log('🔍 Credential verification status:', verificationStatus);
+        
         const flattenedCredentialData = flattenCredentialData(credentialResponse);
+        console.log('📊 Flattened credential data:', flattenedCredentialData);
+        
+        // Log the flattened data in the required format
+        console.log('🎯 Credential data in required format:');
+        if (Object.keys(flattenedCredentialData).length === 0) {
+          console.warn('⚠️ No credentials were flattened - check the response structure above');
+        } else {
+          Object.entries(flattenedCredentialData).forEach(([credentialName, data]) => {
+            console.log(`📋 ${credentialName}:`, {
+              id: data.id,
+              type: data.type,
+              verificationStatus: data.verificationStatus,
+              issuerName: data.issuerName,
+              issuerId: data.issuerId,
+              data: data.data
+            });
+          });
+        }
         
         // Extract user info from the first credential
         const firstCredential = Object.values(flattenedCredentialData)[0];
@@ -551,6 +534,13 @@ export async function checkVerificationStatus(
         }
       } catch (credentialError) {
         console.error('❌ Error fetching credential data for UI:', credentialError);
+        console.error('🔍 Error details:', {
+          message: credentialError.message,
+          stack: credentialError.stack,
+          sessionId,
+          environmentId,
+          hasAccessToken: !!accessToken
+        });
       }
     }
 

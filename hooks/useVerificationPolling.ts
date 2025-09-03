@@ -75,6 +75,12 @@ export function useVerificationPolling({
 
   // Check verification status
   const checkStatus = useCallback(async () => {
+    // First check: ensure polling is still active
+    if (!isPollingRef.current) {
+      console.log('🛑 checkStatus called but polling is stopped, ignoring');
+      return;
+    }
+
     // Safety check: ensure we have all required parameters
     if (!accessToken || !environmentId || !sessionId) {
       console.error('Missing required parameters for polling:', { accessToken: !!accessToken, environmentId, sessionId });
@@ -83,7 +89,8 @@ export function useVerificationPolling({
       return;
     }
 
-    if (!isPollingRef.current || isExpired() || isTimedOut()) {
+    if (isExpired() || isTimedOut()) {
+      console.log('🛑 Session expired or timed out, stopping polling');
       stopPolling();
       return;
     }
@@ -93,7 +100,8 @@ export function useVerificationPolling({
 
     try {
       const response = await checkVerificationStatus(accessToken, environmentId, sessionId);
-      const normalizedStatus = STATUS_MAP[response.verificationStatus.status];
+      const rawStatus = response.verificationStatus.status;
+      const normalizedStatus = STATUS_MAP[rawStatus];
       const userInfo = response.userInfo;
 
       // Reset error count on success
@@ -102,14 +110,21 @@ export function useVerificationPolling({
       setStatus(normalizedStatus);
       onStatusChange?.(normalizedStatus, response.verificationStatus, userInfo);
 
-      // Stop polling on terminal states
-      if (['approved', 'declined', 'expired', 'failed'].includes(normalizedStatus)) {
+      // Stop polling immediately on any terminal status (success or failure)
+      if (['VERIFICATION_SUCCESSFUL', 'VERIFICATION_FAILED', 'VERIFICATION_EXPIRED'].includes(rawStatus)) {
+        console.log('🛑 Terminal status reached, stopping polling:', rawStatus);
         stopPolling();
         return;
       }
 
-      // Continue polling for non-terminal states
-      scheduleNextPoll();
+      // Only continue polling for pending states
+      if (['INITIAL', 'WAITING'].includes(rawStatus)) {
+        console.log('⏳ Non-terminal status, continuing polling:', rawStatus);
+        scheduleNextPoll();
+      } else {
+        console.log('⚠️ Unknown status, stopping polling:', rawStatus);
+        stopPolling();
+      }
 
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error occurred');
@@ -135,22 +150,30 @@ export function useVerificationPolling({
 
   // Schedule next poll
   const scheduleNextPoll = useCallback(() => {
-    if (!isPollingRef.current) return;
+    if (!isPollingRef.current) {
+      console.log('🛑 scheduleNextPoll called but polling is stopped, ignoring');
+      return;
+    }
 
     const interval = getPollingInterval();
+    console.log('⏰ Scheduling next poll in', interval, 'ms');
 
     if (pollingIntervalRef.current) {
       clearTimeout(pollingIntervalRef.current);
     }
 
     pollingIntervalRef.current = setTimeout(() => {
+      console.log('⏰ Scheduled poll timeout triggered');
       checkStatus();
     }, interval);
   }, [checkStatus, getPollingInterval]);
 
   // Start polling
   const startPolling = useCallback(() => {
-    if (isPollingRef.current) return;
+    if (isPollingRef.current) {
+      console.log('🔄 startPolling called but already polling, ignoring');
+      return;
+    }
 
     // Safety check: ensure we have all required parameters before starting
     if (!accessToken || !environmentId || !sessionId) {
@@ -159,6 +182,12 @@ export function useVerificationPolling({
       return;
     }
 
+    console.log('🚀 Starting polling with parameters:', { 
+      hasAccessToken: !!accessToken, 
+      environmentId, 
+      sessionId 
+    });
+    
     isPollingRef.current = true;
     startTimeRef.current = Date.now();
     consecutiveErrorsRef.current = 0;
@@ -171,17 +200,22 @@ export function useVerificationPolling({
 
   // Stop polling
   const stopPolling = useCallback(() => {
+    console.log('🛑 stopPolling called, current polling state:', isPollingRef.current);
     isPollingRef.current = false;
 
     if (pollingIntervalRef.current) {
+      console.log('🛑 Clearing polling interval timeout');
       clearTimeout(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
 
     if (backoffTimeoutRef.current) {
+      console.log('🛑 Clearing backoff timeout');
       clearTimeout(backoffTimeoutRef.current);
       backoffTimeoutRef.current = null;
     }
+    
+    console.log('🛑 Polling stopped successfully');
   }, []);
 
   // Reset hook state
