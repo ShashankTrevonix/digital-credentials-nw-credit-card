@@ -25,8 +25,9 @@ import {
   getPingOneAccessToken, 
   generateQRCode, 
   submitCreditCardApplication, 
-  assessCreditEligibility 
-} from '@/lib/api';
+  assessCreditEligibility,
+  issueCredential
+} from '@/lib/backend-api';
 import type { 
   QRCodeResponse, 
   CreditCardApplication, 
@@ -97,7 +98,59 @@ export default function CreditCardApplication() {
   ) {
     console.log('Verification status changed:', status, data, extractedUserInfo);
     
+    // Enhanced logging for successful verification
+    if (status === 'approved') {
+      console.log('🎉 ===== COMPONENT: VERIFICATION SUCCESSFUL =====');
+      console.log('🎉 Status:', status);
+      console.log('🎉 Full Data Object:', JSON.stringify(data, null, 2));
+      console.log('🎉 Extracted User Info:', JSON.stringify(extractedUserInfo, null, 2));
+      
+      // Log all available properties in the data object
+      if (data) {
+        console.log('🎉 ===== DATA OBJECT PROPERTIES =====');
+        Object.keys(data).forEach(key => {
+          console.log(`🎉 ${key}:`, data[key]);
+        });
+        console.log('🎉 ===== END DATA OBJECT PROPERTIES =====');
+      }
+      
+      // Log all available properties in the user info
+      if (extractedUserInfo) {
+        console.log('🎉 ===== USER INFO PROPERTIES =====');
+        Object.keys(extractedUserInfo).forEach(key => {
+          console.log(`🎉 ${key}:`, (extractedUserInfo as any)[key]);
+        });
+        console.log('🎉 ===== END USER INFO PROPERTIES =====');
+      }
+      
+      console.log('🎉 ===== END COMPONENT VERIFICATION SUCCESS =====');
+    }
+    
     if (extractedUserInfo) {
+      console.log('🎉 ===== USER DATA RECEIVED IN COMPONENT =====');
+      console.log('🎉 Raw User Info:', JSON.stringify(extractedUserInfo, null, 2));
+      
+      // Extract and log individual fields
+      const userData = {
+        firstName: (extractedUserInfo as any)['First Name'],
+        lastName: (extractedUserInfo as any)['Last Name'],
+        fullName: (extractedUserInfo as any)['First Name'] && (extractedUserInfo as any)['Last Name'] 
+          ? `${(extractedUserInfo as any)['First Name']} ${(extractedUserInfo as any)['Last Name']}` 
+          : null,
+        address: (extractedUserInfo as any).Street && (extractedUserInfo as any).City && (extractedUserInfo as any).Postcode && (extractedUserInfo as any).Country
+          ? `${(extractedUserInfo as any).Street}, ${(extractedUserInfo as any).City}, ${(extractedUserInfo as any).Postcode}, ${(extractedUserInfo as any).Country}`
+          : null,
+        accountNumber: (extractedUserInfo as any)['Account Number'],
+        sortCode: (extractedUserInfo as any)['Sort Code'],
+        dob: (extractedUserInfo as any).DOB,
+        userId: (extractedUserInfo as any).UserID,
+        cardType: (extractedUserInfo as any).CardType,
+        area: (extractedUserInfo as any).Area
+      };
+      
+      console.log('🎉 Processed User Data:', JSON.stringify(userData, null, 2));
+      console.log('🎉 ===== END USER DATA =====');
+      
       setUserInfo(extractedUserInfo);
     }
 
@@ -160,11 +213,38 @@ export default function CreditCardApplication() {
     }
   }, [startPolling, resetPolling]);
 
+  const handleCredentialIssuance = async () => {
+    console.log('🎫 Frontend: Issuing credential after successful verification...');
+    console.log('🎫 Frontend: User info:', userInfo);
+    console.log('🎫 Frontend: Verification data:', verificationData);
+    if (!userInfo || !verificationData?.accessToken) return;
+    
+    try {
+      console.log('🎫 Frontend: Issuing credential after successful verification...');
+      const userId = (userInfo as any).UserID;
+      
+      if (!userId) {
+        console.error('❌ Frontend: No UserID found in user info');
+        return;
+      }
+      
+      const result = await issueCredential(verificationData.accessToken, userId);
+      console.log('✅ Frontend: Credential issued successfully:', result);
+    } catch (err) {
+      console.error('❌ Frontend: Error issuing credential:', err);
+      // Don't set error state for credential issuance failure - it's not critical
+    }
+  };
+
   const handleCreditAssessment = async () => {
     if (!userInfo) return;
 
     try {
       setIsLoading(true);
+      
+      // Issue credential after successful verification (now that userInfo is available)
+      await handleCredentialIssuance();
+      
       const assessmentResult = await assessCreditEligibility(userInfo);
       setAssessment(assessmentResult);
       
@@ -210,6 +290,14 @@ export default function CreditCardApplication() {
       return () => clearTimeout(timeoutId);
     }
   }, [currentStep, handleTimeout]);
+
+  // Issue credential when userInfo becomes available after successful verification
+  useEffect(() => {
+    if (userInfo && currentStep === 'completed' && verificationData?.accessToken) {
+      console.log('🎫 Frontend: UserInfo available, issuing credential...');
+      handleCredentialIssuance();
+    }
+  }, [userInfo, currentStep, verificationData?.accessToken]);
 
   const getStepContent = () => {
     switch (currentStep) {
@@ -522,19 +610,35 @@ export default function CreditCardApplication() {
                   <CardContent className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Name:</span>
-                      <span className="font-medium">{userInfo.fullName || 'N/A'}</span>
+                      <span className="font-medium">
+                        {(userInfo as any)['First Name'] && (userInfo as any)['Last Name'] 
+                          ? `${(userInfo as any)['First Name']} ${(userInfo as any)['Last Name']}` 
+                          : userInfo.fullName || 'N/A'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Address:</span>
-                      <span className="font-medium">{userInfo.address || 'N/A'}</span>
+                      <span className="font-medium">
+                        {(userInfo as any).Street && (userInfo as any).City && (userInfo as any).Postcode && (userInfo as any).Country
+                          ? `${(userInfo as any).Street}, ${(userInfo as any).City}, ${(userInfo as any).Postcode}, ${(userInfo as any).Country}`
+                          : userInfo.address || 'N/A'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Credit Score:</span>
-                      <span className="font-medium">{userInfo.creditScore || 'N/A'}</span>
+                      <span className="text-gray-600">Account Number:</span>
+                      <span className="font-medium">{(userInfo as any)['Account Number'] || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Annual Income:</span>
-                      <span className="font-medium">£{userInfo.annualIncome?.toLocaleString() || 'N/A'}</span>
+                      <span className="text-gray-600">Sort Code:</span>
+                      <span className="font-medium">{(userInfo as any)['Sort Code'] || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Date of Birth:</span>
+                      <span className="font-medium">{(userInfo as any).DOB || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">User ID:</span>
+                      <span className="font-medium text-xs">{(userInfo as any).UserID || 'N/A'}</span>
                     </div>
                   </CardContent>
                 </Card>

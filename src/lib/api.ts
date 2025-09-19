@@ -87,7 +87,7 @@ export async function getPingOneAccessToken(): Promise<PingOneTokenResponse> {
 // Create presentation request to generate QR code
 export async function createPresentationRequest(
   accessToken: string,
-  message: string = "Please present your Digital ID for credit card application"
+  message: string = "Please present your NatWest Current Account credentials for credit card application"
 ): Promise<QRCodeResponse> {
   const presentationUrl = `${API_CONFIG.pingOne.apiPath}/environments/${API_CONFIG.pingOne.environmentId}/presentationSessions`;
   
@@ -99,8 +99,21 @@ export async function createPresentationRequest(
     },
     requestedCredentials: [
       {
-        type: 'Your Digital ID from NatWest',
-        keys: []
+        type: 'NatWest Current Account',
+        keys: [
+          'DOB',
+          'CardType', 
+          'Area',
+          'First Name',
+          'UserID',
+          'Sort Code',
+          'Street',
+          'Postcode',
+          'Country',
+          'City',
+          'Last Name',
+          'Account Number'
+        ]
       }
     ]
   };

@@ -160,6 +160,7 @@ export interface FlattenedCredentialData {
       sortCode?: string;
       creditScore?: number;
       annualIncome?: number;
+      userId?: string;
     };
   };
 }

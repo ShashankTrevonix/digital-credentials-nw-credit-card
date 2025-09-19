@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { checkVerificationStatus } from '@/lib/api';
+import { checkVerificationStatus } from '@/lib/backend-api';
 import type { VerificationStatus, NormalizedStatus, VerificationStatusResponse } from '@/types/api';
 
 // Map PingOne statuses to normalized frontend statuses
@@ -100,15 +100,47 @@ export function useVerificationPolling({
 
     try {
       const response = await checkVerificationStatus(accessToken, environmentId, sessionId);
-      const rawStatus = response.verificationStatus.status;
-      const normalizedStatus = STATUS_MAP[rawStatus];
+      console.log('🔍 Frontend: Status response:', JSON.stringify(response, null, 2));
+      
+      // Handle the new response structure from backend API
+      const verificationStatus = response.verificationStatus || response;
+      const rawStatus = verificationStatus.status || 'INITIAL';
+      const normalizedStatus = STATUS_MAP[rawStatus as VerificationStatus] || 'pending';
       const userInfo = response.userInfo;
+      
+      console.log('🔍 Frontend: Raw status:', rawStatus, 'Normalized status:', normalizedStatus);
+      console.log('🔍 Frontend: Verification status object:', verificationStatus);
+
+      // Log all received data when verification is successful
+      if (rawStatus === 'VERIFICATION_SUCCESSFUL') {
+        console.log('🎉 ===== FRONTEND: VERIFICATION SUCCESSFUL =====');
+        console.log('🎉 Full Response Data:', JSON.stringify(response, null, 2));
+        console.log('🎉 User Info Data:', JSON.stringify(userInfo, null, 2));
+        console.log('🎉 Verification Status:', JSON.stringify(verificationStatus, null, 2));
+        
+        // Log specific attributes if available
+        if (userInfo) {
+          console.log('🎉 ===== RECEIVED USER ATTRIBUTES =====');
+          const attributes = [
+            'DOB', 'CardType', 'Area', 'First Name', 'UserID',
+            'Sort Code', 'Street', 'Postcode', 'Country', 'City',
+            'Last Name', 'Account Number'
+          ];
+          
+          attributes.forEach(attr => {
+            const value = userInfo[attr] || userInfo[attr.toLowerCase()] || userInfo[attr.replace(' ', '')];
+            console.log(`🎉 ${attr}: ${value ? `✅ ${value}` : '❌ NOT FOUND'}`);
+          });
+          console.log('🎉 ===== END USER ATTRIBUTES =====');
+        }
+        console.log('🎉 ===== END VERIFICATION SUCCESS =====');
+      }
 
       // Reset error count on success
       consecutiveErrorsRef.current = 0;
 
       setStatus(normalizedStatus);
-      onStatusChange?.(normalizedStatus, response.verificationStatus, userInfo);
+      onStatusChange?.(normalizedStatus, verificationStatus, userInfo);
 
       // Stop polling immediately on any terminal status (success or failure)
       if (['VERIFICATION_SUCCESSFUL', 'VERIFICATION_FAILED', 'VERIFICATION_EXPIRED'].includes(rawStatus)) {
