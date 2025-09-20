@@ -10,19 +10,19 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
+    --primary: 270 100% 30%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 270 20% 95%;
+    --secondary-foreground: 270 100% 30%;
+    --muted: 270 20% 95%;
+    --muted-foreground: 270 10% 50%;
+    --accent: 270 20% 95%;
+    --accent-foreground: 270 100% 30%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --border: 270 20% 90%;
+    --input: 270 20% 90%;
+    --ring: 270 100% 30%;
     --radius: 0.5rem;
   }
 
@@ -55,5 +55,28 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  /* Text highlight with image background */
+  .text-highlight-image {
+    background-image: url('/clientlib_title_base/resources/images/Blueberry1.png');
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    min-height: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+  }
+  
+  
+  /* Fallback for when image is not available */
+  .text-highlight-fallback {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
   }
 }
